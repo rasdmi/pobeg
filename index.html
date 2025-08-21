@@ -1,475 +1,463 @@
+сделал кнопку «↖ Свернуть» в окне выбора уровня — оно уезжает в **мини-кнопку в левом верхнем углу** «📂 Уровни». Клик по мини-кнопке возвращает полноэкранное меню. Также можно жать `M` для быстрого сворачивания/разворачивания.
+
+Вот полный обновлённый файл:
+
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Bandit Parkour — stable</title>
+<title>Побег — выбор уровней</title>
 <style>
   html,body{height:100%;margin:0}
   body{background:#eff1f3;font-family:system-ui,Segoe UI,Roboto,Manrope,sans-serif}
   #wrap{display:flex;align-items:center;justify-content:center;height:100%}
   canvas{background:#dfe6ea;box-shadow:0 8px 30px rgba(0,0,0,.15);border-radius:14px;max-width:100%;height:auto;touch-action:none}
-  .hud{position:fixed;left:10px;top:10px;background:rgba(255,255,255,.92);padding:6px 10px;border-radius:10px;font-weight:800}
-  .timer{position:fixed;right:10px;top:10px;background:rgba(255,255,255,.92);padding:6px 10px;border-radius:10px;font-weight:800}
-  .summary{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px}
+  .hud{position:fixed;left:10px;top:10px;background:rgba(255,255,255,.92);padding:6px 10px;border-radius:10px;font-weight:800;z-index:2}
+  .timer{position:fixed;right:10px;top:10px;background:rgba(255,255,255,.92);padding:6px 10px;border-radius:10px;font-weight:800;z-index:2}
+  .summary{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:3}
   .summary .card{background:#fff;border-radius:16px;box-shadow:0 20px 80px rgba(0,0,0,.25);max-width:560px;width:100%;padding:22px}
   .summary h2{margin:0 0 8px 0}
   .btn{padding:10px 18px;font-size:16px;font-weight:700;border:none;border-radius:10px;cursor:pointer;background:#ff6b35;color:#fff;box-shadow:0 4px 10px rgba(0,0,0,.2)}
+  .btn.secondary{background:#2f80ed}
+  .btn.ghost{background:#fff;color:#333;border:2px solid #d0d7de;box-shadow:none}
   .hidden{display:none}
+  /* меню уровней */
+  .menu{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:4}
+  .menu .card{background:#fff;border-radius:16px;box-shadow:0 20px 80px rgba(0,0,0,.25);max-width:640px;width:100%;padding:22px}
+  .menu h1{margin:0}
+  .menu .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  .menu .row{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  /* мини-кнопка в левом верхнем углу */
+  .mini{position:fixed;left:10px;top:10px;z-index:5;background:#fff;border:2px solid #d0d7de;border-radius:12px;padding:6px 10px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.12);cursor:pointer}
+  .help{position:fixed;left:10px;bottom:10px;background:rgba(255,255,255,.92);padding:6px 10px;border-radius:10px;font-weight:600;z-index:2}
+  .btn.ghost{background:#fff;color:#333;border:2px solid #d0d7de;box-shadow:none}
+.mini{
+  position:fixed;left:10px;top:10px;z-index:5;
+  background:#fff;border:2px solid #d0d7de;border-radius:12px;
+  padding:6px 10px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.12);
+  cursor:pointer
+}
+
 </style>
 </head>
 <body>
-<div class="hud">🪙 <span id="score">0</span> · ❤️ <span id="lives">3</span> · 🔧 <span id="weapon">нет</span></div>
-<div class="timer">⏱️ <span id="time">30</span> c</div>
+<div class="hud" id="hud">🪙 <span id="score">0</span> · ❤️ <span id="lives">3</span> · 🔧 <span id="weapon">нет</span></div>
+<div class="timer" id="timer">⏱️ <span id="time">30</span> c</div>
 <div id="wrap"><canvas id="game" width="1024" height="576"></canvas></div>
 
-<div id="summary" class="summary hidden" role="dialog" aria-modal="true">
+<!-- мини-кнопка -->
+<button id="menuMini" class="mini hidden" title="Открыть выбор уровня">📂 Уровни</button>
+
+<!-- окно выбора уровня -->
+<div id="menu" class="menu">
   <div class="card">
-    <h2>Время вышло!</h2>
-    <p id="sumText"></p>
-    <div style="text-align:center;margin-top:14px">
-      <button id="restart" class="btn">🔄 Играть снова</button>
+    <div class="row">
+      <h1>Выбор уровня</h1>
+      <button id="minBtn" class="btn ghost" title="Свернуть в левый верх">↖ Свернуть</button>
+    </div>
+    <p>Кликни режим. Esc — освободить мышь.</p>
+    <div class="grid">
+      <button id="btnL1" class="btn">Уровень 1 — Паркур побег</button>
+      <button id="btnL2" class="btn secondary">Уровень 2 — 1-лицо (майнкрафт)</button>
     </div>
   </div>
 </div>
 
+<div id="summary" class="summary hidden" role="dialog" aria-modal="true">
+  <div class="card">
+    <h2 id="sumTitle">Миссия!</h2>
+    <p id="sumText"></p>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+      <button id="restart" class="btn">🔄 Играть снова</button>
+      <button id="toMenu" class="btn secondary">🏠 В меню уровней</button>
+    </div>
+  </div>
+</div>
+
+<div id="help" class="help hidden"></div>
+
 <script>
 (() => {
+  // ===== DOM
   const c = document.getElementById('game');
   const ctx = c.getContext('2d');
+  const hud = document.getElementById('hud');
+  const timerBox = document.getElementById('timer');
   const scoreEl = document.getElementById('score');
   const livesEl = document.getElementById('lives');
   const weaponEl= document.getElementById('weapon');
   const timeEl  = document.getElementById('time');
+  const menuEl  = document.getElementById('menu');
+  const btnL1   = document.getElementById('btnL1');
+  const btnL2   = document.getElementById('btnL2');
+  const minBtn  = document.getElementById('minBtn');
+  const menuMini= document.getElementById('menuMini');
   const sumEl   = document.getElementById('summary');
+  const sumTitle= document.getElementById('sumTitle');
   const sumText = document.getElementById('sumText');
   const restartBtn = document.getElementById('restart');
+  const toMenuBtn  = document.getElementById('toMenu');
+  const helpEl = document.getElementById('help');
 
-  // ====== WORLD ======
-  const W = 2400;
-  const H = c.height;
-  const GRAV = 0.9;
-  const JUMP = -16;
-  const FRICTION_G = 0.86;
-  const FRICTION_AIR = 0.985;
-  const MAX_VX = 7, MAX_VY = 24;
-  const EPS = 0.0001;
+  let MODE = 'menu'; // menu | level1 | level2 | ended
+  let RAF = 0;
 
-  // платформы (Только прямоугольники, без наклонов)
-  const platforms = [
-    {x:0,y:520,w:2400,h:200,color:'#c7baa1'}, // земля
-    {x:80,y:440,w:220,h:18,color:'#b9ad90'},
-    {x:330,y:380,w:120,h:18,color:'#b9ad90'},
-    {x:520,y:330,w:160,h:18,color:'#b9ad90'},
-    {x:740,y:280,w:140,h:18,color:'#b9ad90'},
-    {x:1000,y:420,w:250,h:18,color:'#b9ad90'},
-    {x:1280,y:360,w:110,h:18,color:'#b9ad90'},
-    {x:1460,y:300,w:170,h:18,color:'#b9ad90'},
-    {x:1680,y:260,w:140,h:18,color:'#b9ad90'},
-    // «рампа» как ступеньки — не клинит
-    {x:300,y:470,w:90,h:14,color:'#bcae93'},
-    {x:390,y:455,w:90,h:14,color:'#bcae93'},
-    {x:480,y:440,w:90,h:14,color:'#bcae93'},
-    {x:570,y:425,w:90,h:14,color:'#bcae93'},
-    // шахта справа
-    {x:1950,y:520,w:450,h:200,color:'#c7baa1'},
-    {x:1980,y:460,w:140,h:18,color:'#b9ad90'},
-    {x:2140,y:420,w:120,h:18,color:'#b9ad90'},
-    {x:2280,y:470,w:90,h:18,color:'#b9ad90'},
-  ];
+  // ======= LEVEL 1 (из прежней версии с респавном/финишем/червём)
+  const L1 = (() => {
+    const W = 2400, H = c.height;
+    const GRAV=0.9, JUMP=-16, Fg=0.86, Fa=0.985, MAX_VX=7, MAX_VY=24, EPS=0.0001;
 
-  // лестницы и канаты
-  const ladders = [
-    {x:155, y:440-120, h:120, w:22, type:'ladder'},
-    {x:560, y:330-150, h:150, w:22, type:'ladder'},
-    {x:1010,y:420-140, h:140, w:18, type:'rope'},
-    {x:2145,y:420-160, h:160, w:18, type:'ladder'},
-  ];
+    const platforms = [
+      {x:0,y:520,w:2400,h:200,color:'#c7baa1'},
+      {x:80,y:440,w:220,h:18,color:'#b9ad90'},
+      {x:330,y:380,w:120,h:18,color:'#b9ad90'},
+      {x:520,y:330,w:160,h:18,color:'#b9ad90'},
+      {x:740,y:280,w:140,h:18,color:'#b9ad90'},
+      {x:1000,y:420,w:250,h:18,color:'#b9ad90'},
+      {x:1280,y:360,w:110,h:18,color:'#b9ad90'},
+      {x:1460,y:300,w:170,h:18,color:'#b9ad90'},
+      {x:1680,y:260,w:140,h:18,color:'#b9ad90'},
+      {x:300,y:470,w:90,h:14,color:'#bcae93'},
+      {x:390,y:455,w:90,h:14,color:'#bcae93'},
+      {x:480,y:440,w:90,h:14,color:'#bcae93'},
+      {x:570,y:425,w:90,h:14,color:'#bcae93'},
+      {x:1950,y:520,w:450,h:200,color:'#c7baa1'},
+      {x:1980,y:460,w:140,h:18,color:'#b9ad90'},
+      {x:2140,y:420,w:120,h:18,color:'#b9ad90'},
+      {x:2280,y:470,w:90,h:18,color:'#b9ad90'},
+    ];
+    const ladders = [
+      {x:155, y:320, h:120, w:22, type:'ladder'},
+      {x:560, y:180, h:150, w:22, type:'ladder'},
+      {x:1010,y:280, h:140, w:18, type:'rope'},
+      {x:2145,y:260, h:160, w:18, type:'ladder'},
+    ];
 
-  const buildings = [
-    {x:0,w:220},{x:260,w:220},{x:520,w:220},{x:820,w:260},
-    {x:1120,w:300},{x:1490,w:260},{x:1800,w:300}
-  ];
+    const player = {x:0,y:420,w:28,h:42,vx:0,vy:0,dir:1,onGround:false,climb:false,hasWeapon:false,inv:0,lives:3};
+    const cops=[], coins=[], weapons=[]; let particles=[];
+    let goal={x:2100,y:520-120,w:56,h:120};
+    let worm={x:2050,y:520,w:120,h:50,vx:2.2,left:1900,right:2350};
 
-  // ====== ENTITIES ======
-  const player = {x:70,y:420,w:28,h:42,vx:0,vy:0,dir:1,onGround:false,climb:false,hasWeapon:false,inv:0,lives:3};
-  const cops = [];
-  const coins = [];
-  const weapons = [];
-  let worm;
-  let particles=[];
+    let score=0, timeLeft=30000, camX=0;
+    let START_X=100; const SAFE_R=280;
 
-  // ====== GAME STATE ======
-  let score=0, hits=0, misses=0;
-  let timeLeft=30000;   // мс
-  let running=true;
-  let camX=0;
+    const keys={left:false,right:false,up:false,down:false};
+    function keyOn(){
+      window.addEventListener('keydown',down); window.addEventListener('keyup',up);
+      function down(e){
+        if(e.code==='ArrowLeft'||e.code==='KeyA') keys.left=true;
+        if(e.code==='ArrowRight'||e.code==='KeyD') keys.right=true;
+        if(e.code==='ArrowUp'||e.code==='KeyW'||e.code==='Space') keys.up=true;
+        if(e.code==='ArrowDown'||e.code==='KeyS') keys.down=true;
+      }
+      function up(e){
+        if(e.code==='ArrowLeft'||e.code==='KeyA') keys.left=false;
+        if(e.code==='ArrowRight'||e.code==='KeyD') keys.right=false;
+        if(e.code==='ArrowUp'||e.code==='KeyW'||e.code==='Space') keys.up=false;
+        if(e.code==='ArrowDown'||e.code==='KeyS') keys.down=false;
+      }
+      return {down,up};
+    }
+    let handlers;
 
-  // ====== INPUT ======
-  const keys={left:false,right:false,up:false,down:false};
-  addEventListener('keydown',e=>{
-    if (e.code==='ArrowLeft'||e.code==='KeyA') keys.left=true;
-    if (e.code==='ArrowRight'||e.code==='KeyD') keys.right=true;
-    if (e.code==='ArrowUp'||e.code==='KeyW'||e.code==='Space') keys.up=true;
-    if (e.code==='ArrowDown'||e.code==='KeyS') keys.down=true;
-  });
-  addEventListener('keyup',e=>{
-    if (e.code==='ArrowLeft'||e.code==='KeyA') keys.left=false;
-    if (e.code==='ArrowRight'||e.code==='KeyD') keys.right=false;
-    if (e.code==='ArrowUp'||e.code==='KeyW'||e.code==='Space') keys.up=false;
-    if (e.code==='ArrowDown'||e.code==='KeyS') keys.down=false;
-  });
-  c.addEventListener('pointerdown', ()=>{ if (player.hasWeapon) performAttack(); });
-
-  // ====== HELPERS ======
-  function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
-  function overlapX(a,b){ return (a.x < b.x + b.w) && (a.x + a.w > b.x); }
-  function aabb(a,b){return !(a.x+a.w<b.x||a.x>b.x+b.w||a.y+a.h<b.y||a.y>b.y+b.h);}
-
-  // --- вертикальные «one-way» коллизии (пол/потолок), без боков ---
-  function integrateY(e, dt, ignorePlatforms=false){
-    const prevY = e.y;
-    const prevBottom = prevY + e.h;
-    const prevTop = prevY;
-
-    if (!ignorePlatforms){
-      // падение на пол
-      if (e.vy > 0){
-        const nextBottom = e.y + e.vy + e.h;
-        for (const p of platforms){
-          if (!overlapX({x:e.x,w:e.w}, p)) continue;
-          const floorY = p.y;
-          if (prevBottom <= floorY + EPS && nextBottom >= floorY - EPS){
-            e.y = floorY - e.h;
-            e.vy = 0;
-            e.onGround = true;
-            return; // стоим на первом найденном полу
-          }
+    const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+    const aabb=(a,b)=>!(a.x+a.w<b.x||a.x>b.x+b.w||a.y+a.h<b.y||a.y>b.y+b.h);
+    function integrateY(e, dt, ignore=false){
+      const prevTop=e.y, prevBottom=e.y+e.h;
+      if(!ignore && e.vy>0){
+        const nextBottom=e.y+e.vy+e.h;
+        for(const p of platforms){
+          if(!(e.x< p.x+p.w && e.x+e.w>p.x)) continue;
+          const floor=p.y;
+          if(prevBottom<=floor+EPS && nextBottom>=floor-EPS){ e.y=floor-e.h; e.vy=0; e.onGround=true; return; }
         }
       }
-      // удар головой
-      if (e.vy < 0){
-        const nextTop = e.y + e.vy;
-        for (const p of platforms){
-          if (!overlapX({x:e.x,w:e.w}, p)) continue;
-          const ceilY = p.y + p.h;
-          if (prevTop >= ceilY - EPS && nextTop <= ceilY + EPS){
-            e.y = ceilY;
-            e.vy = 0;
-            break;
-          }
+      if(!ignore && e.vy<0){
+        const nextTop=e.y+e.vy;
+        for(const p of platforms){
+          if(!(e.x< p.x+p.w && e.x+e.w>p.x)) continue;
+          const ceil=p.y+p.h;
+          if(prevTop>=ceil-EPS && nextTop<=ceil+EPS){ e.y=ceil; e.vy=0; break; }
         }
       }
+      e.y+=e.vy;
     }
-    e.y += e.vy;
-  }
-
-  // ====== PLAYER ======
-  function ladderUnder(e){
-    for (const L of ladders){
-      const rect={x:L.x-10,y:L.y,w:L.w+20,h:L.h};
-      if (aabb(e,rect)) return L;
+    function ladderUnder(e){
+      for(const L of ladders){ const r={x:L.x-10,y:L.y,w:L.w+20,h:L.h}; if(aabb(e,r)) return L; }
+      return null;
     }
-    return null;
-  }
+    function updatePlayer(dt){
+      player.inv=Math.max(0,player.inv-dt);
+      const accel=player.onGround?1:0.55;
+      if(keys.left){player.vx-=accel; player.dir=-1;}
+      if(keys.right){player.vx+=accel; player.dir=1;}
+      player.vx*=(player.onGround?Fg:Fa); player.vx=clamp(player.vx,-MAX_VX,MAX_VX); player.x+=player.vx;
 
-  function updatePlayer(dt){
-    player.inv = Math.max(0, player.inv-dt);
-
-    const accel = player.onGround? 1.0 : 0.55;
-    if (keys.left){ player.vx -= accel; player.dir=-1; }
-    if (keys.right){ player.vx += accel; player.dir= 1; }
-    player.vx *= (player.onGround? FRICTION_G : FRICTION_AIR);
-    player.vx = clamp(player.vx, -MAX_VX, MAX_VX);
-    player.x += player.vx; // боков нет → не застрянем
-
-    // лестницы
-    const L = ladderUnder(player);
-    player.climb = !!L && (keys.up || keys.down);
-
-    // гравитация/прыжок
-    if (player.climb){
-      player.vy = 0;
-      if (keys.up)   player.y -= 3;
-      if (keys.down) player.y += 3.2;
-      // фиксируем по центру
-      player.x = L.x + L.w/2 - player.w/2;
-      integrateY(player, dt, true); // пропускаем платформы
-      player.onGround = false;
-    } else {
-      if (keys.up && player.onGround){ player.vy = JUMP; player.onGround=false; }
-      player.vy += GRAV;
-      player.vy = clamp(player.vy, -MAX_VY, MAX_VY);
-      player.onGround = false;
-      integrateY(player, dt, false);
-    }
-
-    // границы и камера
-    player.x = clamp(player.x, 0, W-player.w);
-    if (player.y > H-1){ player.y = H-1; player.vy = 0; player.onGround = true; }
-    camX = clamp(player.x + player.w/2 - c.width/2, 0, W - c.width);
-
-    // сбор монет
-    for (const m of coins){
-      if (!m.taken && Math.hypot(player.x+player.w/2 - m.x, player.y+player.h/2 - m.y) < m.r + 16){
-        m.taken=true; score+=1; scoreEl.textContent=score;
-        particles.push({x:m.x,y:m.y,vx:0,vy:-2,g:0.05,life:600,txt:'🪙'});
-      }
-    }
-    // оружие
-    for (const w of weapons){
-      if (!w.taken && aabb(player,{x:w.x,y:w.y,w:w.w,h:w.h})){
-        w.taken=true; player.hasWeapon=true; weaponEl.textContent='есть';
-        particles.push({x:w.x+8,y:w.y+8,vx:0,vy:-2,g:0.05,life:600,txt:'🔧'});
-      }
-    }
-  }
-
-  function performAttack(){
-    const atk = {x: player.x + (player.dir>0? player.w : -36), y: player.y+2, w:36, h:38};
-    let any=false;
-    for (const cop of cops){
-      if (cop.stun>0) continue;
-      if (aabb(atk,cop)){ cop.stun=900; any=true; score+=2; hits++; }
-    }
-    if (!any) misses++;
-    particles.push({x:atk.x+atk.w/2,y:atk.y+atk.h/2,vx:0,vy:-2,g:0.06,life:400,txt:any?'💥':'💨'});
-  }
-
-  // ====== COPS & WORM ======
-  function updateCops(dt){
-    for (const cop of cops){
-      if (cop.stun>0){ cop.stun-=dt; continue; }
-      const speed = 1.6;
-      if (Math.abs((cop.x+cop.w/2)-(player.x+player.w/2))>4){
-        cop.vx += (player.x>cop.x? speed : -speed)*0.08;
-      }
-      cop.vx = clamp(cop.vx,-2.2,2.2);
-      cop.x += cop.vx;
-
-      cop.vy += GRAV;
-      cop.vy = clamp(cop.vy,-MAX_VY,MAX_VY);
-      integrateY(cop, dt, false);
-
-      if (player.inv<=0 && aabb(cop,player)){
-        player.lives--; livesEl.textContent=player.lives;
-        player.inv=1200;
-        particles.push({x:player.x+14,y:player.y, vx:0,vy:-2,g:0.05,life:600,txt:'💢'});
-        if (player.lives<=0){ endGame(); }
-      }
-    }
-  }
-
-  function updateWorm(dt){
-    worm.t -= dt;
-    if (worm.phase==='wait'){
-      worm.y = 520;
-      if (worm.t<=0 && Math.abs((player.x+player.w/2)-worm.x) < 220){
-        worm.phase='rise'; worm.vy = -18;
-      } else if (worm.t<=0){ worm.t = 900; }
-    } else if (worm.phase==='rise'){
-      worm.y += worm.vy; worm.vy += 0.9;
-      if (worm.y <= 380){ worm.phase='fall'; worm.vy=4; }
-      if (aabb({x:worm.x-40,y:worm.y- worm.h,w:80,h:worm.h}, player) && player.inv<=0){
-        player.lives--; livesEl.textContent=player.lives; player.inv=1200;
-        if (player.lives<=0){ endGame(); }
-      }
-    } else if (worm.phase==='fall'){
-      worm.y += worm.vy; worm.vy += 0.9;
-      if (worm.y>=520){ worm.y=520; worm.phase='wait'; worm.t = 1200+Math.random()*1200; }
-    }
-  }
-
-  // ====== WORLD GEN ======
-  function spawnCoins(n=24){
-    coins.length=0;
-    for (let i=0;i<n;i++){
-      const p = platforms[1+Math.floor(Math.random()*(platforms.length-1))];
-      const x = p.x + 10 + Math.random()*(p.w-20);
-      const y = p.y - 16;
-      coins.push({x,y,r:8,taken:false});
-    }
-  }
-  function spawnWeapons(n=5){
-    weapons.length=0;
-    for (let i=0;i<n;i++){
-      const p = platforms[1+Math.floor(Math.random()*(platforms.length-1))];
-      const x = p.x + 14 + Math.random()*(p.w-28);
-      const y = p.y - 18;
-      weapons.push({x,y,w:16,h:16,taken:false});
-    }
-  }
-  function spawnCops(){
-    cops.length=0;
-    const spots=[120,360,560,760,1040,1310,1490,1700,2060,2240];
-    for (const x of spots) cops.push({x,y:420,w:30,h:40,vx:0,vy:0,stun:0});
-  }
-  function spawnWorm(){ worm = {x:2050,y:520,w:90,h:110,vy:0,phase:'wait',t:800+Math.random()*1200}; }
-
-  // ====== LOOP ======
-  let last=performance.now();
-  function loop(t){
-    const dt = Math.min(33, t-last); last=t;
-    if (!running){ render(); return; }
-
-    // таймер
-    timeLeft = Math.max(0, timeLeft - dt);
-    timeEl.textContent = Math.ceil(timeLeft/1000);
-    if (timeLeft<=0){ endGame(); return; }
-
-    updatePlayer(dt);
-    updateCops(dt);
-    updateWorm(dt);
-
-    // частицы
-    for (let i=particles.length-1;i>=0;i--){
-      const p=particles[i]; p.life-=dt; p.x+=p.vx; p.y+=p.vy; p.vy+=p.g; if (p.life<=0) particles.splice(i,1);
-    }
-
-    render();
-    requestAnimationFrame(loop);
-  }
-
-  // ====== RENDER ======
-  function render(){
-    ctx.clearRect(0,0,c.width,c.height);
-
-    // фон
-    ctx.fillStyle='#eef3f6'; ctx.fillRect(0,0,c.width,c.height);
-
-    ctx.save();
-    ctx.translate(-camX,0);
-
-    // город-бэк
-    ctx.fillStyle='#cfd7dd';
-    for (const b of buildings){
-      ctx.fillRect(b.x,150, b.w, 370);
-      ctx.fillStyle='#e8eff4';
-      for (let y=170;y<500;y+=48){
-        for (let x=b.x+12;x<b.x+b.w-12;x+=40) ctx.fillRect(x,y,24,16);
-      }
-      ctx.fillStyle='#cfd7dd';
-    }
-
-    // платформы
-    for (const p of platforms){
-      ctx.fillStyle=p.color||'#b9ad90';
-      ctx.fillRect(p.x,p.y,p.w,p.h||18);
-    }
-
-    // лестницы/канаты
-    for (const L of ladders){
-      if (L.type==='ladder'){
-        ctx.fillStyle='#9b7a55'; ctx.fillRect(L.x, L.y, L.w, L.h);
-        ctx.strokeStyle='#734f2e'; ctx.lineWidth=2;
-        for (let y=L.y;y<L.y+L.h;y+=16){ ctx.beginPath(); ctx.moveTo(L.x-6,y); ctx.lineTo(L.x+L.w+6,y); ctx.stroke(); }
+      const L = ladderUnder(player);
+      player.climb= !!L && (keys.up||keys.down);
+      if(player.climb){
+        player.vy=0; if(keys.up)player.y-=3; if(keys.down)player.y+=3.2;
+        player.x = L.x + L.w/2 - player.w/2; integrateY(player,dt,true); player.onGround=false;
       } else {
-        ctx.strokeStyle='#7a5f44'; ctx.lineWidth=6;
-        ctx.beginPath(); ctx.moveTo(L.x+L.w/2,L.y); ctx.lineTo(L.x+L.w/2,L.y+L.h); ctx.stroke();
+        if(keys.up && player.onGround){ player.vy=JUMP; player.onGround=false; }
+        player.vy+=GRAV; player.vy=clamp(player.vy,-MAX_VY,MAX_VY); player.onGround=false; integrateY(player,dt,false);
+      }
+
+      player.x=clamp(player.x,0,2400-player.w);
+      if(player.y>H-1){ player.y=H-1; player.vy=0; player.onGround=true; }
+      camX = clamp(player.x + player.w/2 - c.width/2, 0, 2400 - c.width);
+
+      for(const m of coins){
+        if(!m.taken && Math.hypot(player.x+player.w/2-m.x, player.y+player.h/2-m.y) < m.r+16){
+          m.taken=true; score++; scoreEl.textContent=score;
+        }
+      }
+      if(aabb(player, goal)) finish();
+    }
+    function respawnToStart(){
+      Object.assign(player,{x:START_X,y:420,vx:0,vy:0,onGround:false,climb:false});
+      player.inv=1000; camX=0;
+    }
+    function updateCops(dt){
+      for(const cop of cops){
+        const speed=1.6;
+        if(Math.abs((cop.x+cop.w/2)-(player.x+player.w/2))>4) cop.vx += (player.x>cop.x? speed:-speed)*0.08;
+        cop.vx=clamp(cop.vx,-2.2,2.2); cop.x+=cop.vx;
+        cop.vy+=GRAV; cop.vy=clamp(cop.vy,-24,24); integrateY(cop,dt,false);
+        if(player.inv<=0 && aabb(cop,player)){ player.lives--; livesEl.textContent=player.lives; respawnToStart(); if(player.lives<=0){ fail(); return; } }
       }
     }
-
-    // монеты/оружие
-    ctx.font='20px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    for (const m of coins){ if (!m.taken) ctx.fillText('🪙', m.x, m.y); }
-    for (const w of weapons){
-      if (w.taken) continue;
-      ctx.fillStyle='#bdbdbd'; ctx.fillRect(w.x,w.y,w.w,w.h);
-      ctx.fillStyle='#6b4423'; ctx.fillRect(w.x-8,w.y+6, w.w+16,6);
+    function updateWorm(dt){
+      worm.x += worm.vx * (dt/16.67);
+      if(worm.x < worm.left || worm.x > worm.right) worm.vx *= -1;
+      const hitBox = {x:worm.x-60, y:worm.y- worm.h, w:120, h:worm.h};
+      if(player.inv<=0 && aabb(hitBox, player)){ player.lives--; livesEl.textContent=player.lives; respawnToStart(); if(player.lives<=0){ fail(); } }
     }
 
-    // копы
-    for (const cop of cops){
-      ctx.fillStyle = (cop.stun>0)? '#87a8ff' : '#2a61ff';
-      ctx.fillRect(cop.x, cop.y, cop.w, cop.h);
-      ctx.fillStyle = (cop.stun>0)? '#a9c0ff' : '#3c72ff';
-      ctx.fillRect(cop.x-6, cop.y+10, cop.w+12, 24);
-      ctx.fillStyle='#1d3e9a';
-      ctx.fillRect(cop.x, cop.y-8, cop.w, 10);
-    }
-
-    // червь
-    ctx.fillStyle='#7a4c2a';
-    ctx.beginPath();
-    ctx.ellipse(worm.x, worm.y- worm.h/2, worm.w/2, worm.h/2, 0, 0, Math.PI*2);
-    ctx.fill();
-    ctx.fillStyle='#5b371c';
-    ctx.beginPath(); ctx.arc(worm.x, worm.y- worm.h+24, 12, 0, Math.PI*2); ctx.fill();
-
-    // игрок
-    const blink = player.inv>0 && Math.floor(performance.now()/120)%2===0;
-    if (!blink){
-      ctx.fillStyle='#222'; ctx.fillRect(player.x, player.y, player.w, player.h);
-      ctx.fillStyle='#ff6b35'; ctx.fillRect(player.x, player.y+10, player.w, 6);
-      if (player.hasWeapon){
-        ctx.fillStyle='#bdbdbd';
-        const hx = player.dir>0? player.x+player.w+4 : player.x-14;
-        ctx.fillRect(hx, player.y+18, 14, 8);
+    function spawnCoins(n=24){
+      coins.length=0;
+      for(let i=0;i<n;i++){
+        const p = platforms[1 + Math.floor(Math.random()*(platforms.length-1))];
+        const x = p.x + 10 + Math.random()*(p.w-20);
+        const y = p.y - 16;
+        coins.push({x,y,r:8,taken:false});
       }
     }
+    function spawnCopsRandom(n=10){
+      cops.length=0; let tries=0;
+      while(cops.length<n && tries<200){
+        const x = 160 + Math.random()*(2400-320);
+        if(Math.abs(x-START_X)>SAFE_R) cops.push({x,y:420,w:30,h:40,vx:0,vy:0});
+        tries++;
+      }
+    }
+    function spawnGoal(){ const x = 1200 + Math.random()*(2400-1300); goal={x:Math.floor(x),y:520-120,w:56,h:120}; }
+    function spawnWorm(){ worm={x:2050,y:520,w:120,h:50,vx:2.2,left:1900,right:2350}; }
 
-    // частицы
-    for (const p of particles){
-      const a = Math.max(0, Math.min(1, p.life/600));
-      ctx.globalAlpha=a; ctx.fillText(p.txt, p.x, p.y); ctx.globalAlpha=1;
+    function drawGoal(){
+      ctx.fillStyle='#2f80ed'; ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
+      ctx.fillStyle='#9bc3ff'; ctx.fillRect(goal.x+6, goal.y+8, goal.w-12, goal.h-16);
+      ctx.fillStyle='#2f80ed'; ctx.fillRect(goal.x+6, goal.y+goal.h/2-2, goal.w-12, 4); ctx.fillRect(goal.x+goal.w/2-2, goal.y+8, 4, goal.h-16);
+    }
+    function drawWorm(){
+      ctx.fillStyle='#7a4c2a'; ctx.beginPath(); ctx.ellipse(worm.x, worm.y - worm.h/2, worm.w/2, worm.h/2, 0, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle='#5b371c'; ctx.beginPath(); ctx.arc(worm.x+(worm.vx>0?14:-14), worm.y - worm.h + 20, 6, 0, Math.PI*2); ctx.fill();
     }
 
-    ctx.restore();
-  }
+    function render(){
+      ctx.clearRect(0,0,c.width,c.height);
+      ctx.fillStyle='#eef3f6'; ctx.fillRect(0,0,c.width,c.height);
+      ctx.save(); ctx.translate(-camX,0);
 
-  // ====== END / RESTART ======
-  function endGame(){
-    running=false;
-    sumEl.classList.remove('hidden');
-    sumText.innerHTML = `Итоговый счёт: <b>${score}</b><br>
-      Попаданий по копам: <b>${hits}</b>, промахов: <b>${misses}</b><br>
-      Осталось жизней: <b>${player.lives}</b>`;
-  }
-  function restart(){
-    score=0; hits=0; misses=0; timeLeft=30000; running=true;
-    scoreEl.textContent=0; timeEl.textContent=30;
-    Object.assign(player,{x:70,y:420,w:28,h:42,vx:0,vy:0,dir:1,onGround:false,climb:false,hasWeapon:false,inv:0,lives:3});
-    weaponEl.textContent='нет'; livesEl.textContent=3; camX=0;
-    particles=[];
-    spawnCoins(); spawnWeapons(); spawnCops(); spawnWorm();
-    sumEl.classList.add('hidden');
-    last = performance.now();
-    requestAnimationFrame(loop);
-  }
-  restartBtn.addEventListener('click', restart);
+      // фон-город
+      ctx.fillStyle='#cfd7dd';
+      for(const b of [{x:0,w:220},{x:260,w:220},{x:520,w:220},{x:820,w:260},{x:1120,w:300},{x:1490,w:260},{x:1800,w:300}]){
+        ctx.fillRect(b.x,150,b.w,370);
+        ctx.fillStyle='#e8eff4';
+        for(let y=170;y<500;y+=48) for(let x=b.x+12;x<b.x+b.w-12;x+=40) ctx.fillRect(x,y,24,16);
+        ctx.fillStyle='#cfd7dd';
+      }
 
-  // ====== INIT ======
-  function spawnCoins(n=24){
-    coins.length=0;
-    for (let i=0;i<n;i++){
-      const p = platforms[1+Math.floor(Math.random()*(platforms.length-1))];
-      const x = p.x + 10 + Math.random()*(p.w-20);
-      const y = p.y - 16;
-      coins.push({x,y,r:8,taken:false});
+      // платформы
+      for(const p of platforms){ ctx.fillStyle=p.color||'#b9ad90'; ctx.fillRect(p.x,p.y,p.w,p.h||18); }
+
+      // лестницы/канаты
+      for(const L of ladders){
+        if(L.type==='ladder'){
+          ctx.fillStyle='#9b7a55'; ctx.fillRect(L.x,L.y,L.w,L.h);
+          ctx.strokeStyle='#734f2e'; ctx.lineWidth=2; for(let y=L.y;y<L.y+L.h;y+=16){ ctx.beginPath(); ctx.moveTo(L.x-6,y); ctx.lineTo(L.x+L.w+6,y); ctx.stroke(); }
+        } else {
+          ctx.strokeStyle='#7a5f44'; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(L.x+L.w/2,L.y); ctx.lineTo(L.x+L.w/2,L.y+L.h); ctx.stroke();
+        }
+      }
+
+      // монеты
+      ctx.font='20px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      for(const m of coins) if(!m.taken) ctx.fillText('🪙', m.x, m.y);
+
+      // копы
+      for(const cop of cops){
+        ctx.fillStyle='#2a61ff'; ctx.fillRect(cop.x,cop.y,cop.w,cop.h);
+        ctx.fillStyle='#3c72ff'; ctx.fillRect(cop.x-6,cop.y+10,cop.w+12,24);
+        ctx.fillStyle='#1d3e9a'; ctx.fillRect(cop.x,cop.y-8,cop.w,10);
+      }
+
+      drawWorm();
+      drawGoal();
+
+      // игрок (для вида сбоку — простой прямоугольник)
+      const blink = player.inv>0 && Math.floor(performance.now()/120)%2===0;
+      if(!blink){ ctx.fillStyle='#222'; ctx.fillRect(player.x, player.y, player.w, player.h); ctx.fillStyle='#ff6b35'; ctx.fillRect(player.x, player.y+10, player.w, 6); }
+
+      ctx.restore();
     }
-  }
-  function spawnWeapons(n=5){
-    weapons.length=0;
-    for (let i=0;i<n;i++){
-      const p = platforms[1+Math.floor(Math.random()*(platforms.length-1))];
-      const x = p.x + 14 + Math.random()*(p.w-28);
-      const y = p.y - 18;
-      weapons.push({x,y,w:16,h:16,taken:false});
-    }
-  }
-  function spawnCops(){
-    cops.length=0;
-    const spots=[120,360,560,760,1040,1310,1490,1700,2060,2240];
-    for (const x of spots) cops.push({x,y:420,w:30,h:40,vx:0,vy:0,stun:0});
-  }
-  function spawnWorm(){ worm = {x:2050,y:520,w:90,h:110,vy:0,phase:'wait',t:800+Math.random()*1200}; }
 
-  (function start(){
-    spawnCoins(); spawnWeapons(); spawnCops(); spawnWorm();
-    requestAnimationFrame(loop);
+    let last=0;
+    function loop(t){
+      if(MODE!=='level1') return;
+      const dt = Math.min(33, t-last||16); last=t;
+      timeLeft=Math.max(0,timeLeft-dt); timeEl.textContent=Math.ceil(timeLeft/1000);
+      if(timeLeft<=0){ fail(); return; }
+      updatePlayer(dt); updateCops(dt); updateWorm(dt); render();
+      RAF=requestAnimationFrame(loop);
+    }
+
+    function finish(){ MODE='ended'; sumTitle.textContent='Миссия выполнена!'; sumText.innerHTML=`Собрано монет: <b>${score}</b>`; sumEl.classList.remove('hidden'); }
+    function fail(){ MODE='ended'; sumTitle.textContent='Поражение'; sumText.innerHTML=`Монет собрано: <b>${score}</b>`; sumEl.classList.remove('hidden'); }
+
+    function restart(){
+      START_X = 60 + (Math.random()*180|0);
+      Object.assign(player,{x:START_X,y:420,w:28,h:42,vx:0,vy:0,dir:1,onGround:false,climb:false,hasWeapon:false,inv:0,lives:3});
+      score=0; scoreEl.textContent=0; timeLeft=30000; timeEl.textContent=30;
+      livesEl.textContent=3; weaponEl.textContent='нет'; camX=0;
+      spawnCoins(); spawnCopsRandom(10); spawnGoal(); spawnWorm();
+      last=performance.now(); RAF=requestAnimationFrame(loop);
+    }
+    function start(){ hud.classList.remove('hidden'); timerBox.classList.remove('hidden'); sumEl.classList.add('hidden'); helpEl.classList.add('hidden'); handlers=keyOn(); restart(); }
+    function stop(){ window.removeEventListener('keydown',handlers.down); window.removeEventListener('keyup',handlers.up); cancelAnimationFrame(RAF); }
+
+    return {start,stop,restart};
   })();
+
+  // ======= LEVEL 2 — 1-лицо с инвентарём (сокращённо)
+  const L2 = (() => {
+    const WMAP=24,HMAP=24; let map=[],px=4,py=12,ang=0,vx=0,vy=0;
+    const FOV=Math.PI*70/180,MOVE=0.06,FRI=0.82;
+    const colors={0:'#0000',1:'#8b5a2b',2:'#6d6d6d',3:'#c86dbd',4:'#f4d35e',5:'#8c7a62',6:'#7ad0ff'};
+    const names={1:'земля',2:'камень',3:'кровать',4:'факел',5:'крест',6:'окно'};
+    const items=[{id:'dirt',icon:'🟫',place:1,tip:'Поставить блок'},{id:'pick',icon:'⛏️',mine:true,tip:'Сломать блок'},{id:'bed',icon:'🛏️',place:3,tip:'Поставить кровать'},{id:'sword',icon:'🗡️',swing:true,tip:'Взмах мечом'},{id:'torch',icon:'🕯️',place:4,tip:'Поставить факел'},{id:'cross',icon:'✝️',place:5,tip:'Поставить крест'},{id:'window',icon:'🪟',place:6,tip:'Поставить окно'}];
+    let selected=0, handT=0, info=''; const keys={w:false,s:false,a:false,d:false,q:false,e:false}; let removeHandlers;
+
+    function genMap(){
+      map = Array.from({length:HMAP},(_,y)=>Array.from({length:WMAP},(_,x)=> (x===0||y===0||x===WMAP-1||y===HMAP-1)?2:0 ));
+      for(let i=0;i<28;i++){ const x=2+Math.floor(Math.random()*(WMAP-4)); const y=2+Math.floor(Math.random()*(HMAP-4)); map[y][x]=(Math.random()<0.6?1:2); }
+      for(let x=2;x<WMAP-2;x++) map[12][x]=0; px=4; py=12; ang=0; vx=vy=0;
+    }
+    const cell=(x,y)=> (map[y]?.[x]??2); const canMove=(nx,ny)=> cell(Math.floor(nx),Math.floor(ny))===0;
+
+    function start(){ helpEl.classList.remove('hidden'); helpEl.textContent='WASD — ходьба, Q/E или ←/→ — поворот, колесо/1–7 — инвентарь, ЛКМ — действие.'; hud.classList.add('hidden'); timerBox.classList.add('hidden'); sumEl.classList.add('hidden'); genMap(); selected=0; info=''; removeHandlers=addHandlers(); MODE='level2'; RAF=requestAnimationFrame(loop); }
+    function stop(){ removeHandlers?.(); cancelAnimationFrame(RAF); document.exitPointerLock?.(); }
+    function restart(){ start(); }
+
+    function addHandlers(){
+      function down(e){ if(e.code==='KeyW'||e.code==='ArrowUp')keys.w=true; if(e.code==='KeyS'||e.code==='ArrowDown')keys.s=true; if(e.code==='KeyA')keys.a=true; if(e.code==='KeyD')keys.d=true; if(e.code==='KeyQ'||e.code==='ArrowLeft')keys.q=true; if(e.code==='KeyE'||e.code==='ArrowRight')keys.e=true; if(e.code>='Digit1'&&e.code<='Digit7')selected=+e.code.slice(5)-1; if(e.code==='Escape')document.exitPointerLock?.(); }
+      function up(e){ if(e.code==='KeyW'||e.code==='ArrowUp')keys.w=false; if(e.code==='KeyS'||e.code==='ArrowDown')keys.s=false; if(e.code==='KeyA')keys.a=false; if(e.code==='KeyD')keys.d=false; if(e.code==='KeyQ'||e.code==='ArrowLeft')keys.q=false; if(e.code==='KeyE'||e.code==='ArrowRight')keys.e=false; }
+      function wheel(e){ e.preventDefault(); selected=(selected+(e.deltaY>0?1:-1)+items.length)%items.length; }
+      function click(){ c.requestPointerLock?.(); }
+      function mdown(){ act(); }
+      const onMouseMove=(e)=>{ if(document.pointerLockElement===c) ang+=e.movementX*0.0025; };
+      window.addEventListener('keydown',down); window.addEventListener('keyup',up);
+      window.addEventListener('wheel',wheel,{passive:false}); window.addEventListener('mousemove',onMouseMove);
+      c.addEventListener('click',click); c.addEventListener('mousedown',mdown);
+      return ()=>{ window.removeEventListener('keydown',down); window.removeEventListener('keyup',up); window.removeEventListener('wheel',wheel); window.removeEventListener('mousemove',onMouseMove); c.removeEventListener('click',click); c.removeEventListener('mousedown',mdown); };
+    }
+
+    function act(){
+      const it=items[selected]; handT=1;
+      if(it.mine){ for(let t=0.1;t<3;t+=0.1){ const cx=Math.floor(px+Math.cos(ang)*t), cy=Math.floor(py+Math.sin(ang)*t); if(cell(cx,cy)!==0){ info='Сломали '+(names[cell(cx,cy)]||'блок'); map[cy][cx]=0; return; } } info='Нечего ломать'; return; }
+      if(it.swing){ return; }
+      if(it.place){ for(let t=0;t<3;t+=0.1){ const cx=Math.floor(px+Math.cos(ang)*t), cy=Math.floor(py+Math.sin(ang)*t); if(cell(cx,cy)===0){ map[cy][cx]=it.place; info='Поставили '+(names[it.place]||'блок'); return; } } info='Перед тобой нет места'; }
+    }
+
+    function update(){
+      if(keys.q) ang-=0.05; if(keys.e) ang+=0.05;
+      const dx=Math.cos(ang), dy=Math.sin(ang), sx=-Math.sin(ang), sy=Math.cos(ang);
+      if(keys.w){vx+=dx*MOVE; vy+=dy*MOVE;} if(keys.s){vx-=dx*MOVE; vy-=dy*MOVE;}
+      if(keys.a){vx+=sx*MOVE; vy+=sy*MOVE;} if(keys.d){vx-=sx*MOVE; vy-=sy*MOVE;}
+      vx*=FRI; vy*=FRI;
+      const nx=px+vx, ny=py+vy; if(canMove(nx,py))px=nx; else vx=0; if(canMove(px,ny))py=ny; else vy=0;
+    }
+
+    function render3D(){
+      const sky=ctx.createLinearGradient(0,0,0,c.height/2); sky.addColorStop(0,'#bfe1ff'); sky.addColorStop(1,'#e6f2ff'); ctx.fillStyle=sky; ctx.fillRect(0,0,c.width,c.height/2);
+      const ground=ctx.createLinearGradient(0,c.height/2,0,c.height); ground.addColorStop(0,'#cfe7cf'); ground.addColorStop(1,'#b8d7b8'); ctx.fillStyle=ground; ctx.fillRect(0,c.height/2,c.width,c.height/2);
+
+      const COLS=256,colW=c.width/COLS;
+      for(let i=0;i<COLS;i++){
+        const camX=2*i/COLS-1;
+        const rayX=Math.cos(ang)+Math.cos(ang+Math.PI/2)*camX*2*Math.tan(Math.PI*70/180/2);
+        const rayY=Math.sin(ang)+Math.sin(ang+Math.PI/2)*camX*2*Math.tan(Math.PI*70/180/2);
+        let mapX=Math.floor(px),mapY=Math.floor(py);
+        const deltaX=Math.abs(1/(rayX||1e-6)),deltaY=Math.abs(1/(rayY||1e-6));
+        let stepX,stepY,sideX,sideY;
+        if(rayX<0){stepX=-1;sideX=(px-mapX)*deltaX;} else {stepX=1;sideX=(mapX+1-px)*deltaX;}
+        if(rayY<0){stepY=-1;sideY=(py-mapY)*deltaY;} else {stepY=1;sideY=(mapY+1-py)*deltaY;}
+        let hit=0,side=0,type=0;
+        while(!hit && mapX>=0&&mapY>=0&&mapX<WMAP&&mapY<HMAP){
+          if(sideX<sideY){sideX+=deltaX;mapX+=stepX;side=0;} else {sideY+=deltaY;mapY+=stepY;side=1;}
+          type=map[mapY][mapX]; if(type>0) hit=1;
+        }
+        const dist=(side===0?sideX-deltaX:sideY-deltaY);
+        const h=Math.max(1,Math.floor(c.height/(dist||1e-6))); const y0=(c.height-h)>>1;
+        ctx.fillStyle=colors[type]||'#777'; ctx.globalAlpha=side?0.85:1; ctx.fillRect(i*colW,y0,colW+1,h); ctx.globalAlpha=1;
+      }
+
+      // рука
+      const sway=Math.sin(performance.now()/250)*4; if(handT>0) handT=Math.max(0,handT-0.08);
+      const hit=Math.sin((1-handT)*Math.PI)*20; const bx=c.width-160+sway+hit, by=c.height-120+Math.abs(sway)*0.8;
+      ctx.fillStyle='#e5c09c'; ctx.fillRect(bx,by,80,90); ctx.fillStyle='#d6a77f'; ctx.fillRect(bx+10,by+10,60,70);
+      ctx.font='28px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji'; ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText(items[selected].icon,bx+24,by+16);
+
+      // хотбар
+      const w=54,gap=8,total=items.length*w+(items.length-1)*gap,ox=(c.width-total)/2,oy=c.height-66;
+      for(let i=0;i<items.length;i++){
+        ctx.fillStyle=i===selected?'rgba(47,128,237,.9)':'rgba(255,255,255,.9)'; ctx.fillRect(ox+i*(w+gap),oy,w,50);
+        ctx.strokeStyle=i===selected?'#1f6bd9':'#999'; ctx.lineWidth=2; ctx.strokeRect(ox+i*(w+gap),oy,w,50);
+        ctx.font='24px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#111'; ctx.fillText(items[i].icon, ox+i*(w+gap)+w/2, oy+25);
+        ctx.font='10px system-ui'; ctx.fillStyle='#333'; ctx.fillText(String(i+1), ox+i*(w+gap)+w-8, oy+10);
+      }
+      if(info){ ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(c.width/2-160,12,320,28); ctx.fillStyle='#fff'; ctx.font='14px system-ui'; ctx.textAlign='center'; ctx.fillText(info, c.width/2, 30); }
+    }
+
+    function loop(){ if(MODE!=='level2') return; update(); render3D(); RAF=requestAnimationFrame(loop); }
+    return {start,stop,restart};
+  })();
+
+  // ===== меню/роутер + сворачивание
+  function showMenu(){ sumEl.classList.add('hidden'); menuMini.classList.add('hidden'); menuEl.classList.remove('hidden'); document.exitPointerLock?.(); }
+  function minimizeMenu(){ menuEl.classList.add('hidden'); menuMini.classList.remove('hidden'); }
+
+  btnL1.onclick = () => { menuEl.classList.add('hidden'); menuMini.classList.add('hidden'); L2.stop(); L1.start(); MODE='level1'; };
+  btnL2.onclick = () => { menuEl.classList.add('hidden'); menuMini.classList.add('hidden'); L1.stop(); L2.start(); MODE='level2'; };
+  minBtn.onclick = minimizeMenu;
+  menuMini.onclick = showMenu;
+
+  restartBtn.onclick = () => { sumEl.classList.add('hidden'); if(MODE==='level1'||MODE==='ended'){ L1.restart(); MODE='level1'; } else { L2.restart(); MODE='level2'; } };
+  toMenuBtn.onclick  = () => { sumEl.classList.add('hidden'); L1.stop(); L2.stop(); helpEl.classList.add('hidden'); showMenu(); MODE='menu'; };
+
+  // горячая клавиша M — свернуть/развернуть меню
+  window.addEventListener('keydown', (e)=>{
+    if(e.code==='KeyM'){
+      if(menuEl.classList.contains('hidden')) showMenu(); else minimizeMenu();
+    }
+  });
+
+  // показать меню при загрузке
+  showMenu();
 })();
 </script>
 </body>
 </html>
+```
