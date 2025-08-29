@@ -1,0 +1,24 @@
+<!-- Вставь внутри <body> (если выносишь в отдельный инклюд) -->
+<div id="mobileControls" class="mobile hidden" aria-hidden="true">
+  <div class="mobile-row">
+    <button class="ctl" data-kdown="KeyA,ArrowLeft" aria-label="Влево">◀</button>
+    <button class="ctl big" data-kdown="KeyW,Space,ArrowUp" aria-label="Прыжок">⤒</button>
+    <button class="ctl" data-kdown="KeyD,ArrowRight" aria-label="Вправо">▶</button>
+  </div>
+  <div class="mobile-row">
+    <button class="ctl" data-kdown="KeyS,ArrowDown" aria-label="Вниз">⬇</button>
+    <button class="ctl" data-kdown="KeyQ" aria-label="Поворот влево">⟲</button>
+    <button class="ctl" data-kdown="KeyE" aria-label="Поворот вправо">⟳</button>
+    <button class="ctl" data-click="1" aria-label="Действие/Атака">⚔</button>
+    <button class="ctl" id="mobMenuBtn" aria-label="Меню уровней">☰</button>
+  </div>
+  <div class="mobile-row hotbar">
+    <button class="slot" data-kpress="Digit1">1</button>
+    <button class="slot" data-kpress="Digit2">2</button>
+    <button class="slot" data-kpress="Digit3">3</button>
+    <button class="slot" data-kpress="Digit4">4</button>
+    <button class="slot" data-kpress="Digit5">5</button>
+    <button class="slot" data-kpress="Digit6">6</button>
+    <button class="slot" data-kpress="Digit7">7</button>
+  </div>
+</div>
