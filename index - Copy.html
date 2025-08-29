@@ -3,77 +3,162 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>Побег — выбор уровней</title>
+<title>Побег — уровни</title>
 <style>
   html,body{height:100%;margin:0}
   body{background:#eff1f3;font-family:system-ui,Segoe UI,Roboto,Manrope,sans-serif}
   #wrap{display:flex;align-items:center;justify-content:center;height:100%}
   canvas{background:#dfe6ea;box-shadow:0 8px 30px rgba(0,0,0,.15);border-radius:14px;max-width:100%;height:auto;touch-action:none}
+
+  /* HUD */
   .hud{position:fixed;left:10px;top:10px;background:rgba(255,255,255,.92);padding:6px 10px;border-radius:10px;font-weight:800;z-index:2}
   .timer{position:fixed;right:10px;top:10px;background:rgba(255,255,255,.92);padding:6px 10px;border-radius:10px;font-weight:800;z-index:2}
+  .help{position:fixed;left:10px;bottom:10px;background:rgba(255,255,255,.92);padding:6px 10px;border-radius:10px;font-weight:600;z-index:2}
+
+  /* Сводка */
   .summary{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:3}
   .summary .card{background:#fff;border-radius:16px;box-shadow:0 20px 80px rgba(0,0,0,.25);max-width:560px;width:100%;padding:22px}
   .summary h2{margin:0 0 8px 0}
+
+  /* Кнопки */
   .btn{padding:10px 18px;font-size:16px;font-weight:700;border:none;border-radius:10px;cursor:pointer;background:#ff6b35;color:#fff;box-shadow:0 4px 10px rgba(0,0,0,.2)}
   .btn.secondary{background:#2f80ed}
   .btn.ghost{background:#fff;color:#333;border:2px solid #d0d7de;box-shadow:none}
-  .hidden{display:none}
-  /* окно выбора уровней */
+
+  /* Окно выбора уровней */
   .menu{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:4}
   .menu .card{background:#fff;border-radius:16px;box-shadow:0 20px 80px rgba(0,0,0,.25);max-width:640px;width:100%;padding:22px}
   .menu h1{margin:0 0 10px 0}
   .menu .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  /* мини-кнопка меню в левом верхнем углу */
+
+  /* Мини-кнопка меню */
   .mini{
     position:fixed;left:10px;top:10px;z-index:5;
     background:#fff;border:2px solid #d0d7de;border-radius:12px;
     padding:6px 10px;font-weight:700;box-shadow:0 3px 12px rgba(0,0,0,.12);
     cursor:pointer
   }
-  .help{position:fixed;left:10px;bottom:10px;background:rgba(255,255,255,.92);padding:6px 10px;border-radius:10px;font-weight:600;z-index:2}
+
+  /* ==== Мобильные кнопки ==== */
+  .mobile{
+    position:fixed; inset:auto 0 0 0; padding:10px 10px 14px;
+    display:flex; flex-direction:column; gap:8px;
+    z-index:6; pointer-events:auto; user-select:none;
+  }
+  .mobile-row{display:flex; gap:8px; justify-content:center}
+  .mobile .ctl, .mobile .slot{
+    min-width:54px; min-height:48px; border:none; border-radius:12px;
+    background:rgba(255,255,255,.9); box-shadow:0 4px 14px rgba(0,0,0,.18);
+    font-weight:800; font-size:18px; padding:8px 12px;
+  }
+  .mobile .ctl.big{min-width:80px}
+  .mobile .hotbar .slot{min-width:40px; font-weight:700}
+
+  /* Утилиты — прячут железно */
+  .hidden{display:none!important;visibility:hidden!important;pointer-events:none!important}
+  .menu.hidden{display:none!important}
+  .summary.hidden{display:none!important}
+
+  /* Паник-оверлей ошибок */
+  #panic{position:fixed;inset:auto 10px 10px 10px;background:#1b1b1b;color:#fff;padding:10px 12px;border-radius:10px;font:12px ui-monospace,Consolas,monospace;z-index:9999;white-space:pre-wrap;line-height:1.35;display:none}
+  #panic strong{color:#ffb3b3}
+
+  @media (max-width: 820px){
+    canvas{width:100%; height:auto}
+  }
 </style>
 </head>
 <body>
-<div class="hud" id="hud">🪙 <span id="score">0</span> · ❤️ <span id="lives">3</span> · 🔧 <span id="weapon">нет</span></div>
-<div class="timer" id="timer">⏱️ <span id="time">30</span> c</div>
-<div id="wrap"><canvas id="game" width="1024" height="576"></canvas></div>
+  <noscript style="position:fixed;inset:0;background:#0008;color:#fff;display:flex;align-items:center;justify-content:center;z-index:9999">
+    Включи JavaScript, иначе игра не запустится.
+  </noscript>
 
-<!-- мини-кнопка для разворачивания меню -->
-<button id="menuMini" class="mini hidden" title="Открыть выбор уровня">📂 Уровни</button>
+  <!-- HUD / Таймер / Канвас -->
+  <div class="hud hidden" id="hud">🪙 <span id="score">0</span> · ❤️ <span id="lives">3</span> · 🔧 <span id="weapon">нет</span></div>
+  <div class="timer hidden" id="timer">⏱️ <span id="time">30</span> c</div>
+  <div id="wrap"><canvas id="game" width="1024" height="576"></canvas></div>
 
-<!-- окно выбора уровня -->
-<div id="menu" class="menu">
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-      <h1 style="margin:0">Выбор уровня</h1>
-      <button id="minBtn" class="btn ghost" title="Свернуть в левый верх">↖ Свернуть</button>
-    </div>
-    <p>Выбери режим. Esc — освободить мышь.</p>
-    <div class="grid">
-      <button id="btnL1" class="btn">Уровень 1 — Паркур побег</button>
-      <button id="btnL2" class="btn secondary">Уровень 2 — 1-лицо (майнкрафт)</button>
-    </div>
-  </div>
-</div>
+  <!-- Кнопка свёрнутого меню -->
+  <button id="menuMini" class="mini hidden" title="Открыть выбор уровня">📂 Уровни</button>
 
-<div id="summary" class="summary hidden" role="dialog" aria-modal="true">
-  <div class="card">
-    <h2 id="sumTitle">Миссия!</h2>
-    <p id="sumText"></p>
-    <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
-      <button id="restart" class="btn">🔄 Играть снова</button>
-      <button id="toMenu" class="btn secondary">🏠 В меню уровней</button>
+  <!-- Окно выбора уровня -->
+  <div id="menu" class="menu">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <h1 style="margin:0">Выбор уровня</h1>
+        <button id="minBtn" class="btn ghost" title="Свернуть в левый верх">↖ Свернуть</button>
+      </div>
+      <p>Выбери режим. Esc — освободить мышь.</p>
+      <div class="grid">
+        <button id="btnL1" class="btn">Уровень 1 — Паркур побег</button>
+        <button id="btnL2" class="btn secondary">Уровень 2 — 1-лицо (майнкрафт)</button>
+      </div>
     </div>
   </div>
-</div>
 
-<div id="help" class="help hidden"></div>
+  <!-- Сводка после уровня -->
+  <div id="summary" class="summary hidden" role="dialog" aria-modal="true">
+    <div class="card">
+      <h2 id="sumTitle">Миссия!</h2>
+      <p id="sumText"></p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:14px">
+        <button id="restart" class="btn">🔄 Играть снова</button>
+        <button id="toMenu" class="btn secondary">🏠 В меню уровней</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Подсказки -->
+  <div id="help" class="help hidden"></div>
+
+  <!-- 📱 Мобильные кнопки -->
+  <div id="mobileControls" class="mobile hidden" aria-hidden="true">
+    <div class="mobile-row">
+      <button class="ctl" data-kdown="KeyA,ArrowLeft" aria-label="Влево">◀</button>
+      <button class="ctl big" data-kdown="KeyW,Space,ArrowUp" aria-label="Прыжок">⤒</button>
+      <button class="ctl" data-kdown="KeyD,ArrowRight" aria-label="Вправо">▶</button>
+    </div>
+    <div class="mobile-row">
+      <button class="ctl" data-kdown="KeyS,ArrowDown" aria-label="Вниз">⬇</button>
+      <button class="ctl" data-kdown="KeyQ" aria-label="Поворот влево">⟲</button>
+      <button class="ctl" data-kdown="KeyE" aria-label="Поворот вправо">⟳</button>
+      <button class="ctl" data-click="1" aria-label="Действие/Атака">⚔</button>
+      <button class="ctl" id="mobMenuBtn" aria-label="Меню уровней">☰</button>
+    </div>
+    <div class="mobile-row hotbar">
+      <button class="slot" data-kpress="Digit1">1</button>
+      <button class="slot" data-kpress="Digit2">2</button>
+      <button class="slot" data-kpress="Digit3">3</button>
+      <button class="slot" data-kpress="Digit4">4</button>
+      <button class="slot" data-kpress="Digit5">5</button>
+      <button class="slot" data-kpress="Digit6">6</button>
+      <button class="slot" data-kpress="Digit7">7</button>
+    </div>
+  </div>
+
+  <!-- Паник-оверлей -->
+  <div id="panic"></div>
 
 <script>
-(() => {
-  // ===== DOM
+(function(){
+  // === паник-оверлей ошибок (покажет причину «белого экрана»)
+  const panic = document.getElementById('panic');
+  function showPanic(msg){
+    panic.style.display='block';
+    panic.innerHTML = "<strong>Ошибка:</strong> " + msg;
+  }
+  window.addEventListener('error', e=>{
+    showPanic((e.message||'') + "\\n" + (e.filename||'') + ":" + (e.lineno||'') + ":" + (e.colno||''));
+  });
+  window.addEventListener('unhandledrejection', e=>{
+    showPanic("Unhandled promise rejection: " + (e.reason && (e.reason.stack||e.reason.message||e.reason)));
+  });
+
+  // ==== DOM
   const c = document.getElementById('game');
   const ctx = c.getContext('2d');
+  if(!ctx){ showPanic("Canvas 2D контекст не создан. Попробуй другой браузер."); return; }
+
   const hud = document.getElementById('hud');
   const timerBox = document.getElementById('timer');
   const scoreEl = document.getElementById('score');
@@ -91,14 +176,17 @@
   const restartBtn = document.getElementById('restart');
   const toMenuBtn  = document.getElementById('toMenu');
   const helpEl = document.getElementById('help');
+  const mobile = document.getElementById('mobileControls');
+  const mobMenuBtn = document.getElementById('mobMenuBtn');
 
-  let MODE = 'menu'; // menu | level1 | level2 | ended
+  let MODE = 'menu';   // menu | level1 | level2 | ended
+  let LAST_PLAYED = 'level1';
   let RAF = 0;
 
-  // ======= LEVEL 1 (обновлённый — безопасный старт, респавн, финиш-окно, червь)
+  // ======= LEVEL 1 (2D паркур)
   const L1 = (() => {
     const W = 2400, H = c.height;
-    const GRAV=0.9, JUMP=-16, Fg=0.86, Fa=0.985, MAX_VX=7, MAX_VY=24, EPS=0.0001;
+    const GRAV=0.9, JUMP=-16, Fg=0.86, Fa=0.985, MAX_VX=7;
 
     const platforms = [
       {x:0,y:520,w:2400,h:200,color:'#c7baa1'},
@@ -110,10 +198,6 @@
       {x:1280,y:360,w:110,h:18,color:'#b9ad90'},
       {x:1460,y:300,w:170,h:18,color:'#b9ad90'},
       {x:1680,y:260,w:140,h:18,color:'#b9ad90'},
-      {x:300,y:470,w:90,h:14,color:'#bcae93'},
-      {x:390,y:455,w:90,h:14,color:'#bcae93'},
-      {x:480,y:440,w:90,h:14,color:'#bcae93'},
-      {x:570,y:425,w:90,h:14,color:'#bcae93'},
       {x:1950,y:520,w:450,h:200,color:'#c7baa1'},
       {x:1980,y:460,w:140,h:18,color:'#b9ad90'},
       {x:2140,y:420,w:120,h:18,color:'#b9ad90'},
@@ -127,7 +211,7 @@
     ];
     const buildings = [{x:0,w:220},{x:260,w:220},{x:520,w:220},{x:820,w:260},{x:1120,w:300},{x:1490,w:260},{x:1800,w:300}];
 
-    const player = {x:0,y:420,w:28,h:42,vx:0,vy:0,dir:1,onGround:false,climb:false,hasWeapon:false,inv:0,lives:3};
+    const player = {x:0,y:420,w:28,h:42,vx:0,vy:0,dir:1,onGround:false,climb:false,inv:0,lives:3};
     const cops=[], coins=[]; let particles=[];
     let goal={x:2100,y:400,w:56,h:120};
     let worm={x:2050,y:520,w:120,h:50,vx:2.2,left:1900,right:2350};
@@ -159,14 +243,14 @@
 
     const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
     const aabb=(a,b)=>!(a.x+a.w<b.x||a.x>b.x+b.w||a.y+a.h<b.y||a.y>b.y+b.h);
-    function integrateY(e, dt, ignore=false){
+    function integrateY(e, ignore=false){
       const prevTop=e.y, prevBottom=e.y+e.h;
       if(!ignore && e.vy>0){
         const nextBottom=e.y+e.vy+e.h;
         for(const p of platforms){
           if(!(e.x< p.x+p.w && e.x+e.w>p.x)) continue;
           const floor=p.y;
-          if(prevBottom<=floor+EPS && nextBottom>=floor-EPS){ e.y=floor-e.h; e.vy=0; e.onGround=true; return; }
+          if(prevBottom<=floor+1e-4 && nextBottom>=floor-1e-4){ e.y=floor-e.h; e.vy=0; e.onGround=true; return; }
         }
       }
       if(!ignore && e.vy<0){
@@ -174,7 +258,7 @@
         for(const p of platforms){
           if(!(e.x< p.x+p.w && e.x+e.w>p.x)) continue;
           const ceil=p.y+p.h;
-          if(prevTop>=ceil-EPS && nextTop<=ceil+EPS){ e.y=ceil; e.vy=0; break; }
+          if(prevTop>=ceil-1e-4 && nextTop<=ceil+1e-4){ e.y=ceil; e.vy=0; break; }
         }
       }
       e.y+=e.vy;
@@ -185,8 +269,8 @@
       return null;
     }
 
-    function updatePlayer(dt){
-      player.inv=Math.max(0,player.inv-dt);
+    function updatePlayer(){
+      player.inv=Math.max(0,player.inv-16);
       const accel=player.onGround?1:0.55;
       if(keys.left){player.vx-=accel; player.dir=-1;}
       if(keys.right){player.vx+=accel; player.dir=1;}
@@ -196,17 +280,17 @@
       player.climb= !!L && (keys.up||keys.down);
       if(player.climb){
         player.vy=0; if(keys.up)player.y-=3; if(keys.down)player.y+=3.2;
-        player.x = L.x + L.w/2 - player.w/2; integrateY(player,dt,true); player.onGround=false;
+        player.x = L.x + L.w/2 - player.w/2; integrateY(player,true); player.onGround=false;
       } else {
         if(keys.up && player.onGround){ player.vy=JUMP; player.onGround=false; }
-        player.vy+=GRAV; player.vy=clamp(player.vy,-MAX_VY,MAX_VY); player.onGround=false; integrateY(player,dt,false);
+        player.vy+=GRAV; player.vy=clamp(player.vy,-24,24); player.onGround=false; integrateY(player,false);
       }
 
       player.x=clamp(player.x,0,W-player.w);
       if(player.y>H-1){ player.y=H-1; player.vy=0; player.onGround=true; }
       camX = clamp(player.x + player.w/2 - c.width/2, 0, W - c.width);
 
-      // монеты (просто эффект и счёт)
+      // монеты
       for(const m of coins){
         if(!m.taken && Math.hypot(player.x+player.w/2-m.x, player.y+player.h/2-m.y) < m.r+16){
           m.taken=true; score++; scoreEl.textContent=score;
@@ -223,12 +307,12 @@
       player.inv=1000; camX=0;
     }
 
-    function updateCops(dt){
+    function updateCops(){
       for(const cop of cops){
         const speed=1.6;
         if(Math.abs((cop.x+cop.w/2)-(player.x+player.w/2))>4) cop.vx += (player.x>cop.x? speed:-speed)*0.08;
         cop.vx=clamp(cop.vx,-2.2,2.2); cop.x+=cop.vx;
-        cop.vy+=GRAV; cop.vy=clamp(cop.vy,-24,24); integrateY(cop,dt,false);
+        cop.vy+=GRAV; cop.vy=clamp(cop.vy,-24,24); integrateY(cop,false);
 
         if(player.inv<=0 && aabb(cop,player)){
           player.lives--; livesEl.textContent=player.lives;
@@ -238,9 +322,8 @@
       }
     }
 
-    // Червь ползает туда-сюда
-    function updateWorm(dt){
-      worm.x += worm.vx * (dt/16.67);
+    function updateWorm(){
+      worm.x += worm.vx;
       if(worm.x < worm.left || worm.x > worm.right) worm.vx *= -1;
       const hitBox = {x:worm.x-60, y:worm.y- worm.h, w:120, h:worm.h};
       if(player.inv<=0 && aabb(hitBox, player)){
@@ -250,7 +333,6 @@
       }
     }
 
-    // Генерация миссии
     function spawnCoins(n=24){
       coins.length=0;
       for(let i=0;i<n;i++){
@@ -346,7 +428,7 @@
       const dt = Math.min(33, t-last||16); last=t;
       timeLeft=Math.max(0,timeLeft-dt); timeEl.textContent=Math.ceil(timeLeft/1000);
       if(timeLeft<=0){ fail(); return; }
-      updatePlayer(dt); updateCops(dt); updateWorm(dt); render();
+      updatePlayer(); updateCops(); updateWorm(); render();
       RAF=requestAnimationFrame(loop);
     }
 
@@ -354,14 +436,14 @@
     function fail(){ MODE='ended'; sumTitle.textContent='Поражение'; sumText.innerHTML=`Монет собрано: <b>${score}</b>`; sumEl.classList.remove('hidden'); }
 
     function restart(){
-      START_X = 60 + (Math.random()*180|0);            // случайная безопасная точка старта
-      Object.assign(player,{x:START_X,y:420,w:28,h:42,vx:0,vy:0,dir:1,onGround:false,climb:false,hasWeapon:false,inv:0,lives:3});
+      START_X = 60 + (Math.random()*180|0);
+      Object.assign(player,{x:START_X,y:420,w:28,h:42,vx:0,vy:0,dir:1,onGround:false,climb:false,inv:0,lives:3});
       score=0; scoreEl.textContent=0; timeLeft=30000; timeEl.textContent=30;
       livesEl.textContent=3; weaponEl.textContent='нет'; camX=0; particles.length=0;
       spawnCoins(); spawnCopsRandom(10); spawnGoal(); spawnWorm();
       last=performance.now(); RAF=requestAnimationFrame(loop);
     }
-    function start(){ hud.classList.remove('hidden'); timerBox.classList.remove('hidden'); sumEl.classList.add('hidden'); helpEl.classList.add('hidden'); handlers=keyOn(); restart(); }
+    function start(){ LAST_PLAYED='level1'; hud.classList.remove('hidden'); timerBox.classList.remove('hidden'); sumEl.classList.add('hidden'); helpEl.classList.add('hidden'); handlers=keyOn(); restart(); }
     function stop(){
       if(handlers){
         window.removeEventListener('keydown',handlers.down);
@@ -375,7 +457,7 @@
     return {start,stop,restart};
   })();
 
-  // ======= LEVEL 2 — 1-лицо с инвентарём (7 предметов)
+  // ======= LEVEL 2 — Raycaster + инвентарь
   const L2 = (() => {
     const WMAP=24, HMAP=24;
     let map=[], px=4,py=12,ang=0,vx=0,vy=0;
@@ -408,6 +490,7 @@
     const canMove=(nx,ny)=> cell(Math.floor(nx),Math.floor(ny))===0;
 
     function start(){
+      LAST_PLAYED='level2';
       helpEl.classList.remove('hidden');
       helpEl.textContent='WASD — ходьба, Q/E или ←/→ — поворот, колесо/1–7 — инвентарь, ЛКМ — действие.';
       hud.classList.add('hidden'); timerBox.classList.add('hidden'); sumEl.classList.add('hidden');
@@ -454,7 +537,7 @@
         }
         info='Нечего ломать'; return;
       }
-      if(it.swing){ /* анимация взмаха */ return; }
+      if(it.swing){ /* только анимация удара */ return; }
       if(it.place){
         for(let t=0;t<3;t+=0.1){
           const cx=Math.floor(px+Math.cos(ang)*t), cy=Math.floor(py+Math.sin(ang)*t);
@@ -501,7 +584,7 @@
         ctx.fillStyle=colors[type]||'#777'; ctx.globalAlpha= side?0.85:1; ctx.fillRect(i*colW,y0,colW+1,h); ctx.globalAlpha=1;
       }
 
-      // рука и хотбар
+      // рука + хотбар
       const sway=Math.sin(performance.now()/250)*4; if(handT>0) handT=Math.max(0,handT-0.08);
       const hit=Math.sin((1-handT)*Math.PI)*20; const bx=c.width-160+sway+hit, by=c.height-120+Math.abs(sway)*0.8;
       ctx.fillStyle='#e5c09c'; ctx.fillRect(bx,by,80,90); ctx.fillStyle='#d6a77f'; ctx.fillRect(bx+10,by+10,60,70);
@@ -522,32 +605,29 @@
     return {start,stop,restart};
   })();
 
-  // ===== сворачивание/разворачивание меню и роутер
-  function showMenu(){ // развернуть
+  // ===== Меню/роутер (и показ меню при загрузке)
+  function showMenu(){
     sumEl.classList.add('hidden');
     menuMini.classList.add('hidden');
     menuEl.classList.remove('hidden');
+    menuEl.style.removeProperty('display');
     document.exitPointerLock?.();
   }
-  function minimizeMenu(){ // свернуть
+  function minimizeMenu(){
     menuEl.classList.add('hidden');
+    menuEl.style.display='none';
     menuMini.classList.remove('hidden');
   }
 
-  btnL1.onclick = () => {
-    menuEl.classList.add('hidden'); menuMini.classList.add('hidden');
-    L2.stop(); L1.start(); MODE='level1';
-  };
-  btnL2.onclick = () => {
-    menuEl.classList.add('hidden'); menuMini.classList.add('hidden');
-    L1.stop(); L2.start(); MODE='level2';
-  };
+  btnL1.onclick = () => { minimizeMenu(); L2.stop(); L1.start(); MODE='level1'; };
+  btnL2.onclick = () => { minimizeMenu(); L1.stop(); L2.start(); MODE='level2'; };
   minBtn.onclick = minimizeMenu;
   menuMini.onclick = showMenu;
 
   restartBtn.onclick = () => {
     sumEl.classList.add('hidden');
-    if(MODE==='level1'||MODE==='ended'){ L1.restart(); MODE='level1'; } else { L2.restart(); MODE='level2'; }
+    if (LAST_PLAYED==='level2') { L2.restart(); MODE='level2'; }
+    else { L1.restart(); MODE='level1'; }
   };
   toMenuBtn.onclick  = () => {
     sumEl.classList.add('hidden');
@@ -555,8 +635,7 @@
     showMenu(); MODE='menu';
   };
 
-  // горячая клавиша M — свернуть/развернуть меню
-  window.addEventListener('keydown', (e)=>{
+  window.addEventListener('keydown', e=>{
     if(e.code==='KeyM'){
       if(menuEl.classList.contains('hidden')) showMenu(); else minimizeMenu();
     }
@@ -564,6 +643,52 @@
 
   // показать меню при загрузке
   showMenu();
+
+  // ===== Мобильные кнопки (симуляция клавиш/кликов)
+  function isTouch(){ return 'ontouchstart' in window || navigator.maxTouchPoints>0; }
+  function dispatchKey(code,type){ const ev=new KeyboardEvent(type,{bubbles:true,cancelable:true,code}); window.dispatchEvent(ev); }
+  function pressKey(code){ dispatchKey(code,'keydown'); }
+  function releaseKey(code){ dispatchKey(code,'keyup'); }
+
+  function bindMobile(){
+    if(!mobile) return;
+    if(isTouch()){ mobile.classList.remove('hidden'); mobile.setAttribute('aria-hidden','false'); }
+    const active=new Map();
+
+    function startBtn(el,id){
+      const codes=(el.dataset.kdown||'').split(',').map(s=>s.trim()).filter(Boolean);
+      for(const code of codes) pressKey(code);
+      const click=!!el.dataset.click;
+      if(click){
+        const rect=c.getBoundingClientRect();
+        const evt=new MouseEvent('mousedown',{bubbles:true,clientX:rect.left+rect.width/2,clientY:rect.top+rect.height/2});
+        c.dispatchEvent(evt);
+      }
+      active.set(id,{codes,click});
+    }
+    function endBtn(id){
+      const st=active.get(id); if(!st) return;
+      for(const code of st.codes) releaseKey(code);
+      active.delete(id);
+    }
+
+    mobile.addEventListener('touchstart', e=>{
+      for(const t of e.changedTouches){
+        const el=document.elementFromPoint(t.clientX,t.clientY);
+        if(el && (el.closest('.ctl')||el.closest('.slot'))){
+          const target=el.closest('.ctl, .slot');
+          if(target.dataset.kpress){ pressKey(target.dataset.kpress); releaseKey(target.dataset.kpress); }
+          else startBtn(target,t.identifier);
+        }
+      }
+      e.preventDefault();
+    }, {passive:false});
+    mobile.addEventListener('touchend', e=>{ for(const t of e.changedTouches) endBtn(t.identifier); e.preventDefault(); });
+    mobile.addEventListener('touchcancel', e=>{ for(const t of e.changedTouches) endBtn(t.identifier); e.preventDefault(); });
+
+    mobMenuBtn?.addEventListener('click', ()=>{ if(menuEl.classList.contains('hidden')) showMenu(); else minimizeMenu(); });
+  }
+  bindMobile();
 })();
 </script>
 </body>
