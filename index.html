@@ -23,6 +23,9 @@
   .menu .card{background:#fff;border-radius:16px;box-shadow:0 20px 80px rgba(0,0,0,.25);max-width:640px;width:100%;padding:22px}
   .menu h1{margin:0 0 10px 0}
   .menu .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  /* чтобы меню реально скрывалось при .hidden */
+.menu.hidden{ display:none !important; }
+
   /* мини-кнопка меню в левом верхнем углу */
   .mini{
     position:fixed;left:10px;top:10px;z-index:5;
